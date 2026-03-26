@@ -1,0 +1,34 @@
+# Environment
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Generated data — too large, users run the scripts themselves
+vachanamrut_data/
+vachanamrut_chroma/
+
+# BGE-M3 model cache (downloaded automatically by FlagEmbedding)
+~/.cache/huggingface/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+
+vachanamrut_data/
+vachanamrut_chroma/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.env
+.DS_Store

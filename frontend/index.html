@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vachanamrut — Sacred Discourse Search</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300;1,8..60,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── THEMES ───────────────────────────────────────────────── */
+    :root {
+      --transition: 0.22s ease;
+      --radius: 6px;
+      --font-serif:   'Cormorant Garamond', Georgia, serif;
+      --font-reading: 'Source Serif 4', Georgia, serif;
+      --font-mono:    'DM Mono', monospace;
+    }
+
+    [data-theme="dark"] {
+      --bg:           #0e0c0a;
+      --bg-surface:   #161310;
+      --bg-card:      #1c1915;
+      --border:       #2e2820;
+      --border-light: #3d3428;
+      --gold:         #c9a84c;
+      --gold-dim:     #8a6f32;
+      --gold-glow:    rgba(201,168,76,0.10);
+      --text:         #e8dfc8;
+      --text-dim:     #8c7f68;
+      --text-muted:   #4a4035;
+      --red-dim:      #7a3a2a;
+      --red-text:     #c47a5a;
+      --toggle-icon:  "☀";
+    }
+
+    [data-theme="light"] {
+      --bg:           #f7f3ec;
+      --bg-surface:   #efe9de;
+      --bg-card:      #e8e0d0;
+      --border:       #d4c9b5;
+      --border-light: #c5b89f;
+      --gold:         #8a6318;
+      --gold-dim:     #b08030;
+      --gold-glow:    rgba(138,99,24,0.08);
+      --text:         #2a2015;
+      --text-dim:     #6b5c3e;
+      --text-muted:   #b0a080;
+      --red-dim:      #e0b8a8;
+      --red-text:     #8b3a1a;
+      --toggle-icon:  "☾";
+    }
+
+    /* ── BASE ─────────────────────────────────────────────────── */
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-serif);
+      font-size: 17px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    /* ── LAYOUT ───────────────────────────────────────────────── */
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ── HEADER ───────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 0 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-size: 1.45rem;
+      font-weight: 300;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+    }
+
+    .header-left h1 span {
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    .header-left p {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Language toggle */
+    .lang-toggle {
+      display: flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .lang-btn {
+      padding: 6px 13px;
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      letter-spacing: 0.06em;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .lang-btn.active {
+      background: var(--gold);
+      color: var(--bg);
+      font-weight: 400;
+    }
+
+    /* Theme toggle */
+    .btn-theme {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: var(--transition);
+      color: var(--text-dim);
+    }
+
+    .btn-theme:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    /* New session button */
+    .btn-new-session {
+      padding: 6px 13px;
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      letter-spacing: 0.06em;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-new-session:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    /* ── CHAT AREA ────────────────────────────────────────────── */
+    .chat-area {
+      overflow-y: auto;
+      padding: 28px 0;
+      scroll-behavior: smooth;
+    }
+
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-track { background: transparent; }
+    .chat-area::-webkit-scrollbar-thumb {
+      background: var(--border-light);
+      border-radius: 2px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 14px;
+      opacity: 0.45;
+    }
+
+    .empty-state .symbol {
+      font-size: 2.6rem;
+      color: var(--gold-dim);
+    }
+
+    .empty-state p {
+      font-size: 0.92rem;
+      font-style: italic;
+      color: var(--text-dim);
+      text-align: center;
+      max-width: 340px;
+      line-height: 1.7;
+    }
+
+    /* Messages */
+    .message {
+      margin-bottom: 30px;
+      animation: fadeUp 0.28s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(7px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* User bubble */
+    .message-user {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .message-user .bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 11px 17px;
+      max-width: 70%;
+      font-family: var(--font-reading);
+      font-size: 1.02rem;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    /* Assistant message */
+    .message-assistant .label {
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      color: var(--gold-dim);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    /* The actual answer text — uses reading font for comfort */
+    .answer {
+      font-family: var(--font-reading);
+      font-size: 1.08rem;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.9;
+      letter-spacing: 0.01em;
+    }
+
+    /* Low relevance warning */
+    .low-relevance-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 8px 14px;
+      background: rgba(122,58,42,0.15);
+      border: 1px solid var(--red-dim);
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      color: var(--red-text);
+      letter-spacing: 0.03em;
+    }
+
+    /* Citations */
+    .citations {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .citations-label {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+
+    .citation-item {
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
+      padding: 4px 0;
+      font-family: var(--font-reading);
+      font-size: 0.88rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    .citation-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      flex-shrink: 0;
+      margin-top: 7px;
+    }
+
+    .citation-text strong {
+      color: var(--gold);
+      font-weight: 400;
+    }
+
+    /* Thinking indicator */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+
+    .thinking-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .thinking-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+      40%            { opacity: 1;   transform: scale(1.05); }
+    }
+
+    /* ── INPUT AREA ───────────────────────────────────────────── */
+    .input-area {
+      padding: 14px 0 22px;
+      border-top: 1px solid var(--border);
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      transition: border-color var(--transition);
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--gold-dim);
+    }
+
+    textarea {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: var(--font-reading);
+      font-size: 1rem;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 26px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    textarea::-webkit-scrollbar { width: 3px; }
+    textarea::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .send-btn {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      background: var(--gold);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      color: var(--bg);
+    }
+
+    .send-btn:hover   { filter: brightness(1.1); }
+    .send-btn:disabled { background: var(--text-muted); cursor: not-allowed; }
+
+    .send-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+    .input-hint {
+      margin-top: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── MODAL ────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 380px;
+      width: 90%;
+      transform: translateY(10px);
+      transition: transform 0.2s ease;
+    }
+
+    .modal-overlay.visible .modal { transform: translateY(0); }
+
+    .modal h2 {
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+
+    .modal p {
+      font-family: var(--font-reading);
+      font-size: 0.9rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      line-height: 1.65;
+      margin-bottom: 22px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn-cancel, .btn-confirm {
+      padding: 7px 18px;
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid var(--border-light);
+    }
+
+    .btn-cancel  { background: none; color: var(--text-dim); }
+    .btn-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+
+    .btn-confirm { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+    .btn-confirm:hover { filter: brightness(1.1); }
+
+    /* ── TOAST ────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--bg-card);
+      border: 1px solid var(--red-dim);
+      color: var(--red-text);
+      padding: 9px 18px;
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      opacity: 0;
+      transition: all 0.28s ease;
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <h1>વચનામૃત &nbsp;·&nbsp; <span>Vachanamrut</span></h1>
+      <p>273 discourses · Bhagwan Swaminarayan</p>
+    </div>
+    <div class="header-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="gu">ગુ</button>
+      </div>
+      <button class="btn-theme" id="themeBtn" title="Toggle theme">☀</button>
+      <button class="btn-new-session" id="newSessionBtn">New Session</button>
+    </div>
+  </header>
+
+  <!-- CHAT -->
+  <div class="chat-area" id="chatArea">
+    <div class="empty-state" id="emptyState">
+      <div class="symbol">॥</div>
+      <p>Ask a question from the Vachanamrut —<br>teachings of Bhagwan Swaminarayan</p>
+    </div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-area">
+    <div class="input-wrapper">
+      <textarea
+        id="questionInput"
+        placeholder="Ask a question in English or Gujarati…"
+        rows="1"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" title="Send">
+        <svg viewBox="0 0 16 16"><path d="M1 1l14 7-14 7V9l10-1L1 7V1z"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+  </div>
+
+</div>
+
+<!-- NEW SESSION MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Start a new session?</h2>
+    <p>This will clear all messages and conversation history from the current session. This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modalCancel">Cancel</button>
+      <button class="btn-confirm" id="modalConfirm">Clear &amp; Start New</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── STATE ────────────────────────────────────────────────────
+  let sessionId  = generateId();
+  let activeLang = "en";
+  let isLoading  = false;
+  let isDark     = true;
+
+  function generateId() {
+    return "s_" + Math.random().toString(36).slice(2, 11);
+  }
+
+  // ── ELEMENTS ─────────────────────────────────────────────────
+  const chatArea      = document.getElementById("chatArea");
+  const emptyState    = document.getElementById("emptyState");
+  const questionInput = document.getElementById("questionInput");
+  const sendBtn       = document.getElementById("sendBtn");
+  const newSessionBtn = document.getElementById("newSessionBtn");
+  const themeBtn      = document.getElementById("themeBtn");
+  const modalOverlay  = document.getElementById("modalOverlay");
+  const modalCancel   = document.getElementById("modalCancel");
+  const modalConfirm  = document.getElementById("modalConfirm");
+  const toast         = document.getElementById("toast");
+
+  // ── THEME TOGGLE ─────────────────────────────────────────────
+  themeBtn.addEventListener("click", () => {
+    isDark = !isDark;
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    themeBtn.textContent = isDark ? "☀" : "☾";
+  });
+
+  // ── LANGUAGE TOGGLE ──────────────────────────────────────────
+  document.querySelectorAll(".lang-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeLang = btn.dataset.lang;
+      document.querySelectorAll(".lang-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".answer").forEach(el => {
+        const en = el.dataset.en;
+        const gu = el.dataset.gu;
+        const text = activeLang === "gu" && gu ? gu : en;
+        el.innerHTML = escapeHtml(text);
+      });
+    });
+  });
+
+  // ── AUTO-RESIZE TEXTAREA ─────────────────────────────────────
+  questionInput.addEventListener("input", () => {
+    questionInput.style.height = "auto";
+    questionInput.style.height = Math.min(questionInput.scrollHeight, 140) + "px";
+  });
+
+  questionInput.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+
+  sendBtn.addEventListener("click", handleSend);
+
+  // ── NEW SESSION ───────────────────────────────────────────────
+  newSessionBtn.addEventListener("click", () => {
+    modalOverlay.classList.add("visible");
+  });
+
+  modalCancel.addEventListener("click", () => {
+    modalOverlay.classList.remove("visible");
+  });
+
+  modalOverlay.addEventListener("click", e => {
+    if (e.target === modalOverlay) modalOverlay.classList.remove("visible");
+  });
+
+  modalConfirm.addEventListener("click", async () => {
+    modalOverlay.classList.remove("visible");
+    await fetch("/api/session/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    }).catch(() => {});
+    sessionId = generateId();
+    // Clear chat but keep empty state
+    Array.from(chatArea.children).forEach(child => {
+      if (child !== emptyState) child.remove();
+    });
+    emptyState.style.display = "flex";
+  });
+
+  // ── SEND ──────────────────────────────────────────────────────
+  async function handleSend() {
+    const question = questionInput.value.trim();
+    if (!question || isLoading) return;
+
+    isLoading = true;
+    sendBtn.disabled = true;
+    questionInput.value = "";
+    questionInput.style.height = "auto";
+    emptyState.style.display = "none";
+
+    appendUserMessage(question);
+    const thinkingEl = appendThinking();
+
+    try {
+      const res  = await fetch("/api/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, session_id: sessionId }),
+      });
+      const data = await res.json();
+      thinkingEl.remove();
+
+      if (!res.ok) {
+        showToast(data.error || "Something went wrong.");
+        return;
+      }
+      appendAssistantMessage(data);
+
+    } catch (err) {
+      thinkingEl.remove();
+      showToast("Could not reach the server. Is it running?");
+    } finally {
+      isLoading = false;
+      sendBtn.disabled = false;
+      questionInput.focus();
+      scrollToBottom();
+    }
+  }
+
+  // ── DOM BUILDERS ─────────────────────────────────────────────
+  function appendUserMessage(text) {
+    const el = document.createElement("div");
+    el.className = "message message-user";
+    el.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+    chatArea.appendChild(el);
+    scrollToBottom();
+  }
+
+  function appendThinking() {
+    const el = document.createElement("div");
+    el.className = "message message-assistant";
+    el.innerHTML = `
+      <div class="thinking">
+        <div class="thinking-dots"><span></span><span></span><span></span></div>
+        Searching the Vachanamrut…
+      </div>`;
+    chatArea.appendChild(el);
+    scrollToBottom();
+    return el;
+  }
+
+  function appendAssistantMessage(data) {
+    const el = document.createElement("div");
+    el.className = "message message-assistant";
+
+    const answerText = activeLang === "gu" && data.answer_gu
+      ? data.answer_gu : data.answer_en;
+
+    let html = `<div class="label">Vachanamrut</div>`;
+
+    if (data.low_relevance) {
+      html += `
+        <div class="low-relevance-banner">
+          ⚠ &nbsp; Limited relevant passages found — answer may be incomplete.
+        </div>`;
+    }
+
+    html += `
+      <div class="answer"
+           data-en="${escapeAttr(data.answer_en)}"
+           data-gu="${escapeAttr(data.answer_gu)}"
+      >${escapeHtml(answerText)}</div>`;
+
+    if (data.citations && data.citations.length > 0) {
+      html += `<div class="citations"><div class="citations-label">Sources</div>`;
+      data.citations.forEach(c => {
+        const section = c.section_en.replace(/_/g, " ");
+        html += `
+          <div class="citation-item">
+            <div class="citation-dot"></div>
+            <div class="citation-text">
+              <strong>${section} ${c.num_in_section}</strong>
+              &nbsp;·&nbsp; ${escapeHtml(c.title_en)}
+            </div>
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    el.innerHTML = html;
+    chatArea.appendChild(el);
+    scrollToBottom();
+  }
+
+  // ── UTILS ─────────────────────────────────────────────────────
+  function scrollToBottom() {
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("visible");
+    setTimeout(() => toast.classList.remove("visible"), 4000);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+      .replace(/\n/g, "<br>");
+  }
+
+  function escapeAttr(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/\n/g, "&#10;")
+      .replace(/\r/g, "");
+  }
+</script>
+</body>
+</html>

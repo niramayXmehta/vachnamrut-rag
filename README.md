@@ -317,6 +317,10 @@ Persisting sessions to disk introduces complexity and privacy considerations wit
 
 ---
 
+## Acknowledgements
+
+Scripture text sourced from [Anirdesh.com](https://www.anirdesh.com/vachanamrut) — a free online resource publishing the Vachanamrut in Gujarati and English. Please be respectful of their server when running the scraper; the built-in 1.2s delay between requests is there for a reason.
+
 ## Stack
 
 | Component      | Technology                   |

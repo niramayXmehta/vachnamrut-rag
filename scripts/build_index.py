@@ -92,8 +92,13 @@ def _make_passages(body_en: str, body_gu: str) -> tuple[list[str], list[str]]:
 
 def split_vachanamrut(record: dict) -> list[dict]:
     """Split one Vachanamrut discourse into passage dicts."""
+    title_en = record.get("title_en", "").strip()
+    body_en  = record.get("body_en", "").strip()
+    if title_en and body_en:
+        body_en = f"Title: {title_en}\n\n{body_en}"
+
     paras_en, paras_gu = _make_passages(
-        record.get("body_en", "").strip(),
+        body_en,
         record.get("body_gu", "").strip(),
     )
     passages = []

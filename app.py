@@ -31,6 +31,7 @@ CORS(app)
 _sessions: dict[str, list[dict]] = {}
 
 VALID_SOURCES = {"vachanamrut", "swamini_vaato"}
+VALID_MODES = {"search", "continue"}
 
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -55,9 +56,11 @@ def api_query():
 
     Request JSON:
         {
-            "question"   : str,                          — required
-            "session_id" : str,                          — required
-            "sources"    : ["vachanamrut", "swamini_vaato"]  — optional, default both
+            "question"          : str,   — required
+            "session_id"        : str,   — required
+            "sources"           : ["vachanamrut", "swamini_vaato"], — optional
+            "mode"              : "search" | "continue",           — optional
+            "previous_passages" : list[dict] | None                — optional
         }
 
     Response JSON:
@@ -67,18 +70,26 @@ def api_query():
             "query_lang"    : str,
             "citations"     : list,
             "low_relevance" : bool,
+            "passages"      : list,
+            "mode"          : str,
             "session_id"    : str
         }
     """
     data = request.get_json(silent=True) or {}
 
-    question   = (data.get("question") or "").strip()
-    session_id = (data.get("session_id") or "").strip()
+    question          = (data.get("question") or "").strip()
+    session_id        = (data.get("session_id") or "").strip()
+    mode              = (data.get("mode") or "search").strip().lower()
+    previous_passages = data.get("previous_passages")
 
     if not question:
         return jsonify({"error": "question is required"}), 400
     if not session_id:
         return jsonify({"error": "session_id is required"}), 400
+    if mode not in VALID_MODES:
+        return jsonify({"error": "mode must be one of: search, continue"}), 400
+    if previous_passages is not None and not isinstance(previous_passages, list):
+        return jsonify({"error": "previous_passages must be a list or null"}), 400
 
     # Parse and validate sources — default to both if not provided
     raw_sources = data.get("sources")
@@ -92,7 +103,13 @@ def api_query():
     history = _get_session(session_id)
 
     try:
-        result = query(question, history=history, sources=sources)
+        result = query(
+            question,
+            history=history,
+            sources=sources,
+            mode=mode,
+            previous_passages=previous_passages,
+        )
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 503
     except Exception as e:
@@ -108,6 +125,8 @@ def api_query():
         "query_lang"    : result["query_lang"],
         "citations"     : result["citations"],
         "low_relevance" : result["low_relevance"],
+        "passages"      : result.get("passages", []),
+        "mode"          : result.get("mode", mode),
         "session_id"    : session_id,
     })
 

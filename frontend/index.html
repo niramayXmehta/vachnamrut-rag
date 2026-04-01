@@ -176,6 +176,46 @@
       color: var(--gold);
     }
 
+    .corpus-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .corpus-label {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .corpus-btn {
+      padding: 6px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .corpus-btn.active {
+      border-color: var(--gold-dim);
+      background: var(--gold-glow);
+      color: var(--gold);
+    }
+
+    .corpus-btn:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
     /* ── CHAT AREA ────────────────────────────────────────────── */
     .chat-area {
       overflow-y: auto;
@@ -321,6 +361,27 @@
     .citation-text strong {
       color: var(--gold);
       font-weight: 400;
+    }
+
+    .citation-source {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      margin-right: 8px;
+      border: 1px solid var(--border-light);
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      vertical-align: middle;
+    }
+
+    .citation-source.sv {
+      color: var(--gold);
+      border-color: var(--gold-dim);
+      background: var(--gold-glow);
     }
 
     /* Thinking indicator */
@@ -484,7 +545,7 @@
       justify-content: flex-end;
     }
 
-    .btn-cancel, .btn-confirm {
+    .btn-cancel, .btn-confirm, .btn-secondary {
       padding: 7px 18px;
       border-radius: var(--radius);
       font-family: var(--font-mono);
@@ -497,6 +558,16 @@
 
     .btn-cancel  { background: none; color: var(--text-dim); }
     .btn-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+
+    .btn-secondary {
+      background: none;
+      color: var(--gold);
+      border-color: var(--gold-dim);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gold-glow);
+    }
 
     .btn-confirm { background: var(--gold); border-color: var(--gold); color: var(--bg); }
     .btn-confirm:hover { filter: brightness(1.1); }
@@ -550,7 +621,7 @@
   <div class="chat-area" id="chatArea">
     <div class="empty-state" id="emptyState">
       <div class="symbol">॥</div>
-      <p>Ask a question from the Vachanamrut —<br>teachings of Bhagwan Swaminarayan</p>
+      <p>Ask about the Vachanamrut or Swamini Vaato —<br>and continue the discussion from retrieved passages</p>
     </div>
   </div>
 
@@ -565,6 +636,11 @@
       <button class="send-btn" id="sendBtn" title="Send">
         <svg viewBox="0 0 16 16"><path d="M1 1l14 7-14 7V9l10-1L1 7V1z"/></svg>
       </button>
+    </div>
+    <div class="corpus-toggle">
+      <span class="corpus-label">Search In</span>
+      <button class="corpus-btn active" data-source="vachanamrut">Vachanamrut</button>
+      <button class="corpus-btn active" data-source="swamini_vaato">Swamini Vaato</button>
     </div>
     <div class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
   </div>
@@ -583,15 +659,31 @@
   </div>
 </div>
 
+<!-- QUERY MODE MODAL -->
+<div class="modal-overlay" id="queryModeOverlay">
+  <div class="modal">
+    <h2>How should I answer this?</h2>
+    <p>Search the scriptures again for fresh passages, or continue from the passages already discussed in this session.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="queryModeCancel">Cancel</button>
+      <button class="btn-secondary" id="queryModeSearch">Search</button>
+      <button class="btn-confirm" id="queryModeContinue">Continue Conversation</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
   // ── STATE ────────────────────────────────────────────────────
-  let sessionId  = generateId();
-  let activeLang = "en";
-  let isLoading  = false;
-  let isDark     = true;
+  let sessionId         = generateId();
+  let activeLang        = "en";
+  let isLoading         = false;
+  let isDark            = true;
+  let lastPassages      = [];
+  let hasSearchResults  = false;
+  let pendingQuestion   = null;
 
   function generateId() {
     return "s_" + Math.random().toString(36).slice(2, 11);
@@ -607,6 +699,11 @@
   const modalOverlay  = document.getElementById("modalOverlay");
   const modalCancel   = document.getElementById("modalCancel");
   const modalConfirm  = document.getElementById("modalConfirm");
+  const queryModeOverlay  = document.getElementById("queryModeOverlay");
+  const queryModeCancel   = document.getElementById("queryModeCancel");
+  const queryModeSearch   = document.getElementById("queryModeSearch");
+  const queryModeContinue = document.getElementById("queryModeContinue");
+  const corpusButtons     = Array.from(document.querySelectorAll(".corpus-btn"));
   const toast         = document.getElementById("toast");
 
   // ── THEME TOGGLE ─────────────────────────────────────────────
@@ -628,6 +725,21 @@
         const text = activeLang === "gu" && gu ? gu : en;
         el.innerHTML = escapeHtml(text);
       });
+    });
+  });
+
+  // ── CORPUS TOGGLES ───────────────────────────────────────────
+  corpusButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const activeButtons = corpusButtons.filter(b => b.classList.contains("active"));
+      const isActive = btn.classList.contains("active");
+
+      if (isActive && activeButtons.length === 1) {
+        showToast("At least one scripture must stay selected.");
+        return;
+      }
+
+      btn.classList.toggle("active");
     });
   });
 
@@ -659,6 +771,34 @@
     if (e.target === modalOverlay) modalOverlay.classList.remove("visible");
   });
 
+  queryModeCancel.addEventListener("click", () => {
+    pendingQuestion = null;
+    queryModeOverlay.classList.remove("visible");
+    questionInput.focus();
+  });
+
+  queryModeOverlay.addEventListener("click", e => {
+    if (e.target === queryModeOverlay) {
+      pendingQuestion = null;
+      queryModeOverlay.classList.remove("visible");
+      questionInput.focus();
+    }
+  });
+
+  queryModeSearch.addEventListener("click", () => {
+    const question = pendingQuestion;
+    pendingQuestion = null;
+    queryModeOverlay.classList.remove("visible");
+    if (question) sendQuery(question, "search");
+  });
+
+  queryModeContinue.addEventListener("click", () => {
+    const question = pendingQuestion;
+    pendingQuestion = null;
+    queryModeOverlay.classList.remove("visible");
+    if (question) sendQuery(question, "continue");
+  });
+
   modalConfirm.addEventListener("click", async () => {
     modalOverlay.classList.remove("visible");
     await fetch("/api/session/clear", {
@@ -667,6 +807,9 @@
       body: JSON.stringify({ session_id: sessionId }),
     }).catch(() => {});
     sessionId = generateId();
+    lastPassages = [];
+    hasSearchResults = false;
+    pendingQuestion = null;
     // Clear chat but keep empty state
     Array.from(chatArea.children).forEach(child => {
       if (child !== emptyState) child.remove();
@@ -679,20 +822,38 @@
     const question = questionInput.value.trim();
     if (!question || isLoading) return;
 
-    isLoading = true;
-    sendBtn.disabled = true;
     questionInput.value = "";
     questionInput.style.height = "auto";
+
+    if (hasSearchResults && lastPassages.length > 0) {
+      pendingQuestion = question;
+      queryModeOverlay.classList.add("visible");
+      return;
+    }
+
+    await sendQuery(question, "search");
+  }
+
+  async function sendQuery(question, mode) {
+    isLoading = true;
+    sendBtn.disabled = true;
     emptyState.style.display = "none";
 
     appendUserMessage(question);
-    const thinkingEl = appendThinking();
+    const thinkingEl = appendThinking(mode);
 
     try {
+      const sources = getActiveSources();
       const res  = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, session_id: sessionId }),
+        body: JSON.stringify({
+          question,
+          session_id: sessionId,
+          mode,
+          sources,
+          previous_passages: mode === "continue" ? lastPassages : null,
+        }),
       });
       const data = await res.json();
       thinkingEl.remove();
@@ -701,6 +862,12 @@
         showToast(data.error || "Something went wrong.");
         return;
       }
+
+      if (mode === "search") {
+        lastPassages = Array.isArray(data.passages) ? data.passages : [];
+        hasSearchResults = true;
+      }
+
       appendAssistantMessage(data);
 
     } catch (err) {
@@ -723,13 +890,13 @@
     scrollToBottom();
   }
 
-  function appendThinking() {
+  function appendThinking(mode) {
     const el = document.createElement("div");
     el.className = "message message-assistant";
     el.innerHTML = `
       <div class="thinking">
         <div class="thinking-dots"><span></span><span></span><span></span></div>
-        Searching the Vachanamrut…
+        ${mode === "continue" ? "Continuing the conversation…" : "Searching the scriptures…"}
       </div>`;
     chatArea.appendChild(el);
     scrollToBottom();
@@ -743,7 +910,7 @@
     const answerText = activeLang === "gu" && data.answer_gu
       ? data.answer_gu : data.answer_en;
 
-    let html = `<div class="label">Vachanamrut</div>`;
+    let html = `<div class="label">${data.mode === "continue" ? "Continued Reflection" : "Scripture Search"}</div>`;
 
     if (data.low_relevance) {
       html += `
@@ -761,13 +928,22 @@
     if (data.citations && data.citations.length > 0) {
       html += `<div class="citations"><div class="citations-label">Sources</div>`;
       data.citations.forEach(c => {
-        const section = c.section_en.replace(/_/g, " ");
+        const source = c.source || "vachanamrut";
+        const isSv = source === "swamini_vaato";
+        const badge = isSv
+          ? `<span class="citation-source sv">Swamini Vaato</span>`
+          : `<span class="citation-source">Vachanamrut</span>`;
+        const citationText = isSv
+          ? `Prakaran ${c.prakaran} Vat ${c.vat_number}`
+          : `<strong>${escapeHtml((c.section_en || "").replace(/_/g, " "))} ${escapeHtml(String(c.num_in_section || ""))}</strong>
+              &nbsp;·&nbsp; ${escapeHtml(c.title_en || "")}`;
+
         html += `
           <div class="citation-item">
             <div class="citation-dot"></div>
             <div class="citation-text">
-              <strong>${section} ${c.num_in_section}</strong>
-              &nbsp;·&nbsp; ${escapeHtml(c.title_en)}
+              ${badge}
+              ${citationText}
             </div>
           </div>`;
       });
@@ -782,6 +958,12 @@
   // ── UTILS ─────────────────────────────────────────────────────
   function scrollToBottom() {
     chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function getActiveSources() {
+    return corpusButtons
+      .filter(btn => btn.classList.contains("active"))
+      .map(btn => btn.dataset.source);
   }
 
   function showToast(msg) {

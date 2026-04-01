@@ -8,9 +8,14 @@ Supports optional corpus filtering via the `sources` parameter:
     ["vachanamrut", "swamini_vaato"]  — both (default)
     ["vachanamrut"]                   — Vachanamrut only
     ["swamini_vaato"]                 — Swamini Vaato only
+
+Also exposes in-memory accessors for both master JSONs so that
+pipeline.py can do direct discourse lookup without hitting ChromaDB.
 """
 
 from __future__ import annotations
+
+import json
 
 import chromadb
 from chromadb.api.models.Collection import Collection
@@ -32,6 +37,53 @@ def _get_collection() -> Collection:
         print(f"[retriever] Collection '{config.COLLECTION_NAME}' ready "
               f"({_collection.count()} passages).")
     return _collection
+
+
+# ─── MASTER JSON SINGLETONS (for discourse lookup) ────────────────────────────
+
+_vachanamrut_data: dict | None = None
+_swamini_vaato_data: dict | None = None
+
+
+def get_vachanamrut_data() -> dict:
+    """
+    Load and return the Vachanamrut master JSON as a dict keyed by str(vachno).
+    Loaded once and cached for the lifetime of the process.
+    """
+    global _vachanamrut_data
+    if _vachanamrut_data is None:
+        path = config.MASTER_JSON
+        if not path.exists():
+            raise FileNotFoundError(
+                f"[retriever] Vachanamrut master JSON not found at {path}. "
+                "Run scrape_vachanamrut.py first."
+            )
+        print(f"[retriever] Loading Vachanamrut master JSON from {path} ...")
+        with open(path, encoding="utf-8") as f:
+            _vachanamrut_data = json.load(f)
+        print(f"[retriever] Loaded {len(_vachanamrut_data)} Vachanamrut records.")
+    return _vachanamrut_data
+
+
+def get_swamini_vaato_data() -> dict:
+    """
+    Load and return the Swamini Vaato master JSON as a dict keyed by
+    "{prakaran}_{vat_number}".
+    Loaded once and cached for the lifetime of the process.
+    """
+    global _swamini_vaato_data
+    if _swamini_vaato_data is None:
+        path = config.SV_MASTER_JSON
+        if not path.exists():
+            raise FileNotFoundError(
+                f"[retriever] Swamini Vaato master JSON not found at {path}. "
+                "Run scrape_swamini_vaato.py first."
+            )
+        print(f"[retriever] Loading Swamini Vaato master JSON from {path} ...")
+        with open(path, encoding="utf-8") as f:
+            _swamini_vaato_data = json.load(f)
+        print(f"[retriever] Loaded {len(_swamini_vaato_data)} Swamini Vaato records.")
+    return _swamini_vaato_data
 
 
 # ─── RETRIEVAL ────────────────────────────────────────────────────────────────

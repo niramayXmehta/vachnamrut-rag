@@ -25,8 +25,8 @@ import time
 import sys
 import argparse
 from pathlib import Path
-import google.generativeai as genai
-
+from google import genai
+from google.genai import types
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 
 MASTER_JSON = Path(__file__).parent.resolve() / "vachanamrut_data" / "vachanamrut_master.json"
@@ -102,11 +102,7 @@ def main():
         print("ERROR: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
         sys.exit(1)
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name=MODEL_NAME,
-        system_instruction=SYSTEM_PROMPT,
-    )
+    client = genai.Client(api_key=api_key)
 
     # Load master JSON
     print(f"Loading {MASTER_JSON} ...")
@@ -131,7 +127,15 @@ def main():
         print("\nCalling Gemini 2.5 Flash Lite ...\n")
 
         prompt   = build_user_prompt(record)
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.2,
+                response_mime_type="application/json",
+            ),
+        )  
         summary  = response.text.strip()
 
         print("─── GENERATED SUMMARY ───────────────────────────────────────────")

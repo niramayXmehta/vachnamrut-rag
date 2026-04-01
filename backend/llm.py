@@ -221,37 +221,33 @@ def _call_ollama(query: str, passages: list[dict]) -> dict:
 
 def _call_gemini(query: str, passages: list[dict]) -> dict:
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
     except ImportError:
         raise RuntimeError(
-            "google-generativeai not installed. Run: pip install google-generativeai"
+            "google-genai not installed. Run: pip install google-genai"
         )
 
     if not config.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY is not set. Add it to your .env file.")
 
-    genai.configure(api_key=config.GEMINI_API_KEY)
-
-    model = genai.GenerativeModel(
-        model_name=config.GEMINI_MODEL,
-        system_instruction=SYSTEM_PROMPT,
-        generation_config=genai.GenerationConfig(
-            temperature=0.2,
-            # Force Gemini to emit valid JSON — eliminates the parsing lottery entirely.
-            # Supported on Gemini 1.5 Flash and later.
-            response_mime_type="application/json",
-        ),
-    )
-
+    client      = genai.Client(api_key=config.GEMINI_API_KEY)
     user_prompt = _build_user_prompt(query, passages)
 
     try:
-        response = model.generate_content(user_prompt)
+        response = client.models.generate_content(
+            model=config.GEMINI_MODEL,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.2,
+                response_mime_type="application/json",
+            ),
+        )
         raw = response.text.strip()
         return _parse_llm_response(raw)
     except Exception as e:
         raise RuntimeError(f"Gemini error: {e}")
-
 
 # ─── PUBLIC API ───────────────────────────────────────────────────────────────
 

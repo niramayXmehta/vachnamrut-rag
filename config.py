@@ -16,15 +16,16 @@ from dotenv import load_dotenv
 # Load .env file from project root
 load_dotenv()
 
-# ─── PROJECT ROOT ──────────────────────────────────────────────────────────────
+# ─── PROJECT ROOT ─────────────────────────────────────────────────────────────
 
 ROOT = Path(__file__).parent.resolve()
 
 # ─── DATA PATHS ───────────────────────────────────────────────────────────────
 
 MASTER_JSON     = ROOT / "vachanamrut_data" / "vachanamrut_master.json"
+SV_MASTER_JSON  = ROOT / "swamini_vaato_data" / "swamini_vaato_master.json"
 CHROMA_PATH     = ROOT / "vachanamrut_chroma"
-COLLECTION_NAME = "vachanamrut_passages"   # new collection — passage-level index
+COLLECTION_NAME = "vachanamrut_passages"   # unified collection — both corpora
 
 # ─── EMBEDDING MODEL ──────────────────────────────────────────────────────────
 
@@ -35,7 +36,6 @@ EMBEDDING_BATCH  = 32          # safe batch size for 18GB RAM
 
 # ─── RETRIEVAL SETTINGS ───────────────────────────────────────────────────────
 
-# Passages are retrieved directly from ChromaDB — no coarse/fine split needed
 TOP_K_PASSAGES = 12            # passages sent directly to LLM
 
 # ─── PASSAGE SPLITTING ────────────────────────────────────────────────────────
@@ -58,7 +58,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 # ─── RELEVANCE THRESHOLD ──────────────────────────────────────────────────────
 
 # Cosine distance above this value → warn user that results may not be relevant
-# Raised from 0.50 → 0.65 — passage-level search is more precise
 RELEVANCE_THRESHOLD = 0.50
 
 # ─── LANGUAGE DETECTION ───────────────────────────────────────────────────────

@@ -4,17 +4,19 @@
 # Python
 venv/
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
 
-# Generated data — too large, users run the scripts themselves
+# Generated data — too large for Git, regenerate by running setup scripts
 vachanamrut_data/
 vachanamrut_chroma/
+swamini_vaato_data/
+swamini_vaato_chroma/
 
-# BGE-M3 model cache (downloaded automatically by FlagEmbedding)
-~/.cache/huggingface/
+# BGE-M3 model cache — downloaded automatically by FlagEmbedding on first run
+# (~/.cache/huggingface/ — not trackable via .gitignore, exclude manually if needed)
 
 # macOS
 .DS_Store
@@ -22,13 +24,3 @@ vachanamrut_chroma/
 # IDE
 .vscode/
 .idea/
-
-
-vachanamrut_data/
-vachanamrut_chroma/
-venv/
-__pycache__/
-**/__pycache__/
-*.pyc
-.env
-.DS_Store

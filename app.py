@@ -3,24 +3,21 @@ app.py
 ──────
 Flask web server for the Vachanamrut RAG chatbot.
 
-Serves the frontend and exposes a REST API for the pipeline.
-
 Endpoints:
     GET  /                  — serves the frontend HTML
     POST /api/query         — runs the RAG pipeline, returns answer + citations
     POST /api/session/clear — clears the current session history
+    GET  /api/health        — health check
 
 Usage:
     python app.py
 
-    # Production (via gunicorn)
+    # Production (single worker required — BGE-M3 is not fork-safe)
     gunicorn app:app --bind 0.0.0.0:5000 --workers 1
-    (single worker required — BGE-M3 model is loaded per process)
 """
 
 from __future__ import annotations
 
-import uuid
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
@@ -31,15 +28,14 @@ from backend import query
 app = Flask(__name__, static_folder="frontend", static_url_path="")
 CORS(app)
 
-# In-memory session store: { session_id: [{"role": ..., "content": ...}, ...] }
-# Sessions are cleared on server restart — by design (per-session memory only)
 _sessions: dict[str, list[dict]] = {}
+
+VALID_SOURCES = {"vachanamrut", "swamini_vaato"}
 
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 def _get_session(session_id: str) -> list[dict]:
-    """Return the history list for a session, creating it if it doesn't exist."""
     if session_id not in _sessions:
         _sessions[session_id] = []
     return _sessions[session_id]
@@ -49,7 +45,6 @@ def _get_session(session_id: str) -> list[dict]:
 
 @app.route("/")
 def index():
-    """Serve the frontend."""
     return send_from_directory("frontend", "index.html")
 
 
@@ -60,15 +55,16 @@ def api_query():
 
     Request JSON:
         {
-            "question"   : str,          — required
-            "session_id" : str           — required (generate on frontend if new)
+            "question"   : str,                          — required
+            "session_id" : str,                          — required
+            "sources"    : ["vachanamrut", "swamini_vaato"]  — optional, default both
         }
 
     Response JSON:
         {
             "answer_en"     : str,
             "answer_gu"     : str,
-            "query_lang"    : str,       — "en" | "gu"
+            "query_lang"    : str,
             "citations"     : list,
             "low_relevance" : bool,
             "session_id"    : str
@@ -79,24 +75,30 @@ def api_query():
     question   = (data.get("question") or "").strip()
     session_id = (data.get("session_id") or "").strip()
 
-    # Validate
     if not question:
         return jsonify({"error": "question is required"}), 400
     if not session_id:
         return jsonify({"error": "session_id is required"}), 400
 
-    # Get session history
+    # Parse and validate sources — default to both if not provided
+    raw_sources = data.get("sources")
+    if raw_sources is None:
+        sources = ["vachanamrut", "swamini_vaato"]
+    else:
+        sources = [s for s in raw_sources if s in VALID_SOURCES]
+        if not sources:
+            return jsonify({"error": "sources must include at least one of: vachanamrut, swamini_vaato"}), 400
+
     history = _get_session(session_id)
 
     try:
-        result = query(question, history=history)
+        result = query(question, history=history, sources=sources)
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 503
     except Exception as e:
         app.logger.error(f"Pipeline error: {e}", exc_info=True)
         return jsonify({"error": "An internal error occurred."}), 500
 
-    # Update session history
     history.append({"role": "user",      "content": question})
     history.append({"role": "assistant", "content": result["answer_en"]})
 
@@ -112,15 +114,6 @@ def api_query():
 
 @app.route("/api/session/clear", methods=["POST"])
 def api_session_clear():
-    """
-    Clear the history for a session.
-
-    Request JSON:
-        { "session_id": str }
-
-    Response JSON:
-        { "cleared": true, "session_id": str }
-    """
     data       = request.get_json(silent=True) or {}
     session_id = (data.get("session_id") or "").strip()
 
@@ -128,13 +121,11 @@ def api_session_clear():
         return jsonify({"error": "session_id is required"}), 400
 
     _sessions.pop(session_id, None)
-
     return jsonify({"cleared": True, "session_id": session_id})
 
 
 @app.route("/api/health", methods=["GET"])
 def api_health():
-    """Simple health check endpoint."""
     import config
     return jsonify({
         "status"   : "ok",
@@ -147,5 +138,5 @@ def api_health():
 if __name__ == "__main__":
     import config
     print(f"  LLM mode : {config.LLM_MODE}")
-    print(f"  Starting Vachanamrut RAG server at http://localhost:5000")
+    print(f"  Starting server at http://localhost:5000")
     app.run(host="0.0.0.0", port=5000, debug=False)
